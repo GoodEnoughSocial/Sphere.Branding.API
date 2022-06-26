@@ -1,20 +1,17 @@
 using Serilog;
 using Sphere.Shared;
 
-Log.Logger = SphericalLogger.SetupLogger();
+// Setting this allows us to get some benefits all over the place.
+Services.Current = Services.Branding;
 
-Log.Information("Starting up");
-
-var registration = Services.Branding.GetServiceRegistration();
+Log.Logger = SphericalLogger.StartupLogger(Services.Current);
 
 try
 {
-    var result = await Services.RegisterService(registration);
-
     var builder = WebApplication.CreateBuilder(args);
-    builder.Host.UseSerilog(SphericalLogger.ConfigureLogger);
+    builder.Host.UseSerilog(SphericalLogger.SetupLogger);
     builder.Services.AddHealthChecks();
-     
+
     // Add services to the container.
 
     builder.Services.AddControllers();
@@ -23,7 +20,7 @@ try
     builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks(Constants.HealthCheckEndpoint);
 
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
@@ -49,8 +46,6 @@ catch (Exception ex)
 }
 finally
 {
-    await Services.UnregisterService(registration);
-
     Log.Information("Shutting down");
     Log.CloseAndFlush();
 }
